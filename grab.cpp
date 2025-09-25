@@ -17,27 +17,35 @@ bool cartype(const string& ride, double &base, double &perKm){
             return true;
         }
     }
-    cout<< "Please enter a valid choice!"<<endl;
+    cout << "Please enter a valid choice!" << endl;
     return false;
 }
 
-double cashback(const string &member ,const double &total_fare ){
+bool getCashbackRate(const string &member, double &rate){
     string member_id []= {"NONE","SILVER","GOLD","PLATINUM"};
     double cashbackRate[]={0,0.02,0.05,0.08};
-    int n =4;
+    int n = 4;
 
-    for(int i =0 ; i<n ; i++){
-        if(member == member_id[i]){
-            return total_fare * cashbackRate[i];
+    for (int i = 0; i < n; i++){
+        if (member == member_id[i]){
+            rate = cashbackRate[i];
+            return true;
         }
     }
-    throw runtime_error("Try again");
+    return false;
 }
 
-// applyPromo now also outputs discount value
-double applyPromo(const string &promo, double fare, double &discount) {
+bool normalizePromo(string &promoUpper){
+    for (int i = 0; i < promoUpper.length(); i++){
+        promoUpper[i] = toupper(promoUpper[i]);
+    }
+    if (promoUpper.empty() || promoUpper == "NONE") return true;
+    if (promoUpper == "GRAB10" || promoUpper == "STUDENT3" || promoUpper == "FREERIDE") return true;
+    return false;
+}
+
+double applyPromo(const string &promo, double fare, double &discount){
     string p = promo;
-    for (char &c : p) c = toupper(c);
     discount = 0.0;
 
     if (p == "GRAB10") {
@@ -59,26 +67,25 @@ double applyPromo(const string &promo, double fare, double &discount) {
             return fare - discount;
         }
     }
-    // invalid or NONE
     return fare;
 }
 
 int main(){
     string ride, member, promo;
-    double base, perKm,total_fare;
+    double base, perKm, total_fare;
 
     cout << "======================================" << endl;
     cout << "    Welcome to Grab Fare Calculator" << endl;
     cout << "======================================" << endl;
     cout << "Available rides: GRABCAR | GRABBIKE | GRABPREMIUM" << endl;
-    cout << "=================================================" << endl;
-    cout << "Available member: NONE | SILVER | GOLD | PLATINUM" << endl;
+    cout << "Available tiers : NONE | SILVER | GOLD | PLATINUM" << endl;
+    cout << "Promo codes     : NONE | GRAB10 | STUDENT3 | FREERIDE" << endl;
     cout << "--------------------------------------" << endl;
 
-    while (true) {
+    while (true){
         cout << "Enter ride type (GRABCAR / GRABBIKE / GRABPREMIUM): ";
         cin >> ride;
-        for (int i = 0 ; i < ride.length(); i++){
+        for (int i = 0; i < ride.length(); i++){
             ride[i] = toupper(ride[i]);
         }
         if (cartype(ride, base, perKm)){
@@ -86,53 +93,67 @@ int main(){
         }
     }
 
-    cout << "Enter membership tier (NONE / SILVER / GOLD / PLATINUM): ";
-    cin >> member;
-    for (int i = 0; i < member.length(); i++) {
-        member[i] = toupper(member[i]);
+    double km;
+    while (true){
+        cout << "Enter distance (km): ";
+        if (cin >> km && km >= 0.0){
+            break;
+        }
+        cout << "Invalid number. Please enter a non-negative value." << endl;
+        cin.clear();
+        cin.ignore();
+    }
+
+    double cbRate;
+    while (true){
+        cout << "Enter membership tier (NONE / SILVER / GOLD / PLATINUM): ";
+        cin >> member;
+        for (int i = 0; i < member.length(); i++){
+            member[i] = toupper(member[i]);
+        }
+        if (getCashbackRate(member, cbRate)){
+            break;
+        }
+        cout << "Invalid membership tier. Try again." << endl;
     }
 
     cout << "Enter promo code (press Enter to skip): ";
     cin.ignore(); // clear leftover newline
     getline(cin, promo);
-
-    if (promo.empty()) {
+    for (int i = 0; i < promo.length(); i++){
+        promo[i] = toupper(promo[i]);
+    }
+    bool promoValid = normalizePromo(promo);
+    if (!promoValid){
+        cout << "Note: Invalid promo code entered. It will be ignored." << endl;
         promo = "NONE";
     }
 
-    for (int i = 0; i < promo.length(); i++) {
-        promo[i] = toupper(promo[i]);
-    }
+    total_fare = base + perKm * km;
 
-    try{
-        total_fare = base * perKm;
+    double promoDiscount = 0.0;
+    double fareAfterPromo = applyPromo(promo, total_fare, promoDiscount);
 
-        double cashbackAmount = cashback(member , total_fare);
+    double cashbackAmount = fareAfterPromo * cbRate;
+    double finalCost = fareAfterPromo - cashbackAmount;
+    if (finalCost < 0) finalCost = 0.0;
 
-        double promoDiscount = 0.0;
-        double fareAfterPromo = applyPromo(promo, total_fare, promoDiscount);
-
-        double finalCost = fareAfterPromo - cashbackAmount;
-        if (finalCost < 0) finalCost = 0; // prevent negative
-
-        cout << "\n=========== Fare Details =============" << endl;
-        cout << "Car type    : " << ride << endl;
-        cout << "Base fare   : RM " << fixed << setprecision(2) << base << endl;
-        cout << "Per km rate : RM " << fixed << setprecision(2) << perKm << endl;
-        cout << "Membership  : " << member << endl;
-        cout << "Promo code  : " << promo << endl;
-        cout << "--------------------------------------" << endl;
-        cout << "Total fare (before promo): RM " << total_fare << endl;
-        cout << "Promo discount           : RM " << promoDiscount << endl;
-        cout << "Fare after promo         : RM " << fareAfterPromo << endl;
-        cout << "Cashback                 : RM " << cashbackAmount << endl;
-        cout << "Final Cost               : RM " << finalCost << endl;
-        cout << "======================================" << endl;
-
-    }catch(const exception &e){
-        cout << "Error: " << e.what() << endl;
-        cout << "Please enter a valid membership tier next time." << endl;
-    }
+    cout << "\n=========== Fare Details =============" << endl;
+    cout << fixed << setprecision(2);
+    cout << "Car type                : " << ride << endl;
+    cout << "Distance                : " << km << " km" << endl;
+    cout << "Base fare               : RM " << base << endl;
+    cout << "Per km rate             : RM " << perKm << endl;
+    cout << "--------------------------------------" << endl;
+    cout << "Total fare (pre-promo)  : RM " << total_fare << endl;
+    cout << "Promo code              : " << promo << (promoValid ? "" : " (invalid ignored)") << endl;
+    cout << "Promo discount          : RM " << promoDiscount << endl;
+    cout << "Fare after promo        : RM " << fareAfterPromo << endl;
+    cout << "Membership              : " << member << " (" << cbRate * 100 << "% cashback)" << endl;
+    cout << "Cashback amount         : RM " << cashbackAmount << endl;
+    cout << "--------------------------------------" << endl;
+    cout << "FINAL COST              : RM " << finalCost << endl;
+    cout << "======================================" << endl;
 
     return 0;
 }

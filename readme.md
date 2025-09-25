@@ -10,7 +10,7 @@ The program calculates the total fare based on ride type, travel distance, a fix
 - Choose from **3 ride types**:
   - GrabCar
   - GrabBike
-  - GrabXL
+  - GrabPremium
 - Enter travel **distance in km**
 - Automatic addition of a fixed **service fee (RM0.50)**
 - Apply **promo codes** for discounts:
